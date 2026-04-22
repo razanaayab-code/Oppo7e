@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NovaOS - Inspired by ColorOS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            user-select: none;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 24px;
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+
+        .time { font-weight: 500; }
+        .battery { display: flex; align-items: center; gap: 4px; }
+
+        /* Home Screen */
+        .home-screen {
+            height: 100vh;
+            padding: 24px 16px 100px;
+            overflow-y: auto;
+            scroll-snap-type: y mandatory;
+        }
+
+        .home-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            padding: 40px 0;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .app-icon {
+            aspect-ratio: 1;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 16px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .app-icon::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .app-icon:hover::before {
+            left: 100%;
+        }
+
+        .app-icon:hover {
+            transform: translateY(-8px) scale(1.05);
+            background: rgba(255,255,255,0.2);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .app-icon img {
+            width: 48px;
+            height: 48px;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        }
+
+        .app-label {
+            font-size: 12px;
+            font-weight: 500;
+            text-align: center;
+            margin-top: 4px;
+        }
+
+        /* Dock */
+        .dock {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(20px);
+            padding: 12px 24px;
+            border-radius: 35px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .dock .app-icon {
+            background: rgba(255,255,255,0.15);
+            padding: 12px;
+            min-width: 64px;
+        }
+
+        /* App Screens */
+        .app-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: white;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(100%);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+            overflow-y: auto;
+        }
+
+        .app-screen.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0);
+        }
+
+        .app-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+
+        .back-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 18px;
+            background: rgba(0,0,0,0.1);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        /* Specific App Styles */
+        .phone-app { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .messages-app { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .camera-app { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .gallery-app { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+        .settings-app { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
+        .music-app { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); }
+
+        .content {
+            padding: 24px;
+        }
+
+        .phone-dialer {
+            text-align: center;
+        }
+
+        .dialer-input {
+            width: 100%;
+            height: 80px;
+            border: none;
+            border-radius: 20px;
+            font-size: 32px;
+            text-align: center;
+            background: rgba(0,0,0,0.05);
+            margin-bottom: 32px;
+        }
+
+        .dialer-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            max-width: 360px;
+            margin: 0 auto;
+        }
+
+        .dialer-btn {
+            aspect-ratio: 1;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            font-weight: 600;
+            background: rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .dialer-btn:active {
+            transform: scale(0.95);
+            background: rgba(0,0,0,0.2);
+        }
+
+        /* Animations */
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .home-grid > * {
+            animation: slideInUp 0.6s ease-out forwards;
+        }
+
+        .home-grid > *:nth-child(1) { animation-delay: 0.1s; }
+        .home-grid > *:nth-child(2) { animation-delay: 0.2s; }
+        .home-grid > *:nth-child(3) { animation-delay: 0.3s; }
+        .home-grid > *:nth-child(4) { animation-delay: 0.4s; }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .home-grid {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <div class="time" id="time"></div>
+        <div class="battery">
+            <span>100%</span>
+            <div style="width: 20px; height: 10px; border: 1px solid white; border-radius: 2px; overflow: hidden;">
+                <div style="width: 100%; height: 100%; background: #4CAF50;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Home Screen -->
+    <div class="home-screen" id="homeScreen">
+        <div class="home-grid">
+            <div class="app-icon" data-app="phone">
+                <img src="https://img.icons8.com/fluency/48/ffffff/phone.png" alt="Phone">
+                <div class="app-label">Phone</div>
+            </div>
+            <div class="app-icon" data-app="messages">
+                <img src="https://img.icons8.com/fluency/48/ffffff/sms.png" alt="Messages">
+                <div class="app-label">Messages</div>
+            </div>
+            <div class="app-icon" data-app="camera">
+                <img src="https://img.icons8.com/fluency/48/ffffff/camera.png" alt="Camera">
+                <div class="app-label">Camera</div>
+            </div>
+            <div class="app-icon" data-app="gallery">
+                <img src="https://img.icons8.com/fluency/48/ffffff/image-gallery.png" alt="Gallery">
+                <div class="app-label">Gallery</div>
+            </div>
+            <div class="app-icon" data-app="music">
+                <img src="https://img.icons8.com/fluency/48/ffffff/musical-notes.png" alt="Music">
+                <div class="app-label">Music</div>
+            </div>
+            <div class="app-icon" data-app="settings">
+                <img src="https://img.icons8.com/fluency/48/ffffff/settings.png" alt="Settings">
+                <div class="app-label">Settings</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dock -->
+    <div class="dock">
+        <div class="app-icon" data-app="phone">
+            <img src="https://img.icons8.com/fluency/48/000000/phone.png" alt="Phone">
+        </div>
+        <div class="app-icon" data-app="messages">
+            <img src="https://img.icons8.com/fluency/48/000000/sms.png" alt="Messages">
+        </div>
+        <div class="app-icon" data-app="camera">
+            <img src="https://img.icons8.com/fluency/48/000000/camera.png" alt="Camera">
+        </div>
+        <div class="app-icon" data-app="music">
+            <img src="https://img.icons8.com/fluency/48/000000/musical-notes.png" alt="Music">
+        </div>
+    </div>
+
+    <!-- Phone App -->
+    <div class="app-screen phone-app" id="phoneApp">
+        <div class="app-header">
+            <button class="back-btn" onclick="closeApp('phone')">←</button>
+            <h1>Phone</h1>
+        </div>
+        <div class="content phone-dialer">
+            <input type="tel" class="dialer-input" placeholder="Tap a number" id="dialerInput">
+            <div class="dialer-grid">
+                <button class="dialer-btn" onclick="addNumber('1')">1</button>
+                <button class="dialer-btn" onclick="addNumber('2')">2</button>
+                <button class="dialer-btn" onclick="addNumber('3')">3</button>
+                <button class="dialer-btn" onclick="addNumber('4')">4</button>
+                <button class="dialer-btn" onclick="addNumber('5')">5</button>
+                <button class="dialer-btn" onclick="addNumber('6')">6</button>
+                <button class="dialer-btn" onclick="addNumber('7')">7</button>
+                <button class="dialer-btn" onclick="addNumber('8')">8</button>
+                <button class="dialer-btn" onclick="addNumber('9')">9</button>
+                <button class="dialer-btn" onclick="addNumber('*')">*</button>
+                <button class="dialer-btn" onclick="addNumber('0')">0</button>
+                <button class="dialer-btn" onclick="addNumber('#')">#</button>
+            </div>
+            <button class="dialer-btn" style="margin: 32px auto; display: block; background: #f44336; color: white; font-size: 18px;" onclick="callNumber()">📞 Call</button>
+        </div>
+    </div>
+
+    <!-- Messages App -->
+    <div class="app-screen messages-app" id="messagesApp">
+        <div class="app-header">
+            <button class="back-btn" onclick="closeApp('messages')">←</button>
+            <h1>Messages</h1>
+        </div>
+        <div class="content">
+            <div style="background: #f5f5f5; height: 400px; border-radius: 20px; padding: 20px; margin-bottom: 20px;">
+                <p style="color: #666; text-align: center; padding-top: 100px;">No conversations yet</p>
+            </div>
+            <input type="text" placeholder="Type a message..." style="width: 100%; padding: 16px; border: none; border-radius: 25px; background: rgba(0,0,0,0.05); font-size: 16px;">
+        </div>
+    </div>
+
+    <!-- Camera App -->
+    <div class="app-screen camera-app" id="cameraApp">
+        <div class="app-header">
+            <button class="back-btn" onclick="closeApp('camera')">←</button>
+            <h1>Camera</h1>
+        </div>
+        <div class="content" style="text-align: center;">
+            <div style="width: 300px; height: 400px; background: #000; border-radius: 20px; margin: 0 auto 40px; display: flex; align-items: center; justify-content: center; font-size: 48px;">📷</div>
+            <button style="width: 80px; height: 80px; border: 4px solid white; border-radius: 50%; background: #f44336; cursor: pointer;"></button>
+        </div>
+    </div>
+
+    <script>
+        // Update time
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('time').textContent = now.toLocaleTimeString('en-US', { 
+                hour: 'numeric', 
+                minute: '2-digit',
+                hour12: true 
+            });
+        }
+        updateTime();
+        setInterval(updateTime, 1000);
+
+        // App management
+        let currentApp = null;
+
+        document.querySelectorAll('.app-icon').forEach(icon => {
+            icon.addEventListener('click', () => {
+                const app = icon.dataset.app;
+                openApp(app);
+            });
+        });
+
+        function openApp(appName) {
+            if (currentApp) {
+                closeApp(currentApp);
+            }
+            currentApp = appName;
+            document.getElementById(appName + 'App').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeApp(appName) {
+            document.getElementById(appName + 'App').classList.remove('active');
+            currentApp = null;
+            document.body.style.overflow = 'hidden auto';
+        }
+
+        // Phone dialer functions
+        function addNumber(number) {
+            document.getElementById('dialerInput').value += number;
+        }
+
+        function callNumber() {
+            const number = document.getElementById('dialerInput').value;
+            if (number) {
+                alert(`Calling ${number}...`);
+                document.getElementById('dialerInput').value = '';
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && currentApp) {
+                closeApp(currentApp);
+            }
+        });
+
+        // Prevent zoom on iOS
+        document.addEventListener('touchstart', function(event) {
+            if (event.touches.length > 1) {
+                event.preventDefault();
+            }
+        });
+
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function(event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+    </script>
+</body>
+</html>
